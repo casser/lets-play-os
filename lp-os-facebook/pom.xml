@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>lets-play</groupId>
-	<artifactId>lp-os-pongo</artifactId>
+	<artifactId>lp-os-facebook</artifactId>
 	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
-	<name>lp-os-pongo</name>
+	<name>lp-os-facebook</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
