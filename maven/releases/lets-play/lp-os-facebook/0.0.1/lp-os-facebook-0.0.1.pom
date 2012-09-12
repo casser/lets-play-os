@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>lets-play</groupId>
-	<artifactId>lp-os-pongo</artifactId>
+	<artifactId>lp-os-facebook</artifactId>
 	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
-	<name>lp-os-pongo</name>
+	<name>lp-os-facebook</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -37,12 +37,8 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>play</groupId>
-			<artifactId>play_2.9.1</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>lets-play</groupId>
-			<artifactId>lp-os-mongo</artifactId>
+			<artifactId>lp-os-json</artifactId>
 			<version>0.0.1</version>
 		</dependency>
 	</dependencies>
