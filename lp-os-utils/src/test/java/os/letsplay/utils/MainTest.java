@@ -29,5 +29,8 @@ public class MainTest extends TestCase {
      */
     public void testApp(){
         assertTrue( true );
+        Types.getType(String.class);
+        Types.getType(String.class);
+        System.out.print(Types.getTypes());
     }
 }

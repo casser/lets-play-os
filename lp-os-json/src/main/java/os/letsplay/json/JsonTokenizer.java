@@ -32,6 +32,8 @@
 
 package os.letsplay.json;
 
+import java.nio.CharBuffer;
+
 public class JsonTokenizer
 {
 	
@@ -100,7 +102,7 @@ public class JsonTokenizer
 			case 't': // attempt to read true
 				lastLoc = loc;
 				String possibleTrue = "t" + nextChar() + nextChar() + nextChar();
-				if ( possibleTrue == "true" ){
+				if ( possibleTrue.equals("true") ){
 					token = JsonToken.create( JsonToken.Type.TRUE, true );
 					nextChar();
 				}else{
@@ -111,7 +113,7 @@ public class JsonTokenizer
 				lastLoc = loc;
 				String possibleFalse = "f" + nextChar() + nextChar() + nextChar() + nextChar();
 				
-				if ( possibleFalse == "false" )
+				if ( possibleFalse.equals("false"))
 				{
 					token = JsonToken.create( JsonToken.Type.FALSE, false );
 					nextChar();
@@ -294,7 +296,8 @@ public class JsonTokenizer
 						// Convert hexValue to an integer, and use that
 						// integer value to create a character to add
 						// to our string.
-						result += String.valueOf(Integer.parseInt(hexValue, 16 ));
+						
+						result += String.valueOf((char)Integer.parseInt(hexValue, 16 ));
 						
 						// Move past the 4 hex digits that we just read
 						nextSubstringStartPosition = unicodeEndPosition;

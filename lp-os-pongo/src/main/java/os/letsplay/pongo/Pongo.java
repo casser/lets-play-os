@@ -27,7 +27,7 @@ public class Pongo {
     	String  dbUser	 = config.getString("pongo.user");
     	String  dbPass   = config.getString("pongo.pass");
     	
-    	Logger.info("Starting pongo <mongo://"+dbUser+":"+dbPass+"@"+dbHost+":"+dbPort+"/"+dbName+">");
+    	Logger.info("Starting pongo <mongo://"+(dbUser!=null?dbUser+":"+dbPass+"@":"")+dbHost+":"+dbPort+"/"+dbName+">");
     	    	
     	mongo = new Mongo(dbHost,dbPort);
     	

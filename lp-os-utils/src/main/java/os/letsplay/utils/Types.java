@@ -427,7 +427,7 @@ public class Types {
 		
 	}
 	
-	public static final Map<String,Type> classMap = new ConcurrentHashMap<String,Type>();
+	public static final Map<Class<?>,Type> classMap = new ConcurrentHashMap<Class<?>,Type>();
 	
 	public static synchronized void register(Class<?> clazz){
 		Type type=null;
@@ -503,29 +503,29 @@ public class Types {
 			}
 		}
 		
-		classMap.put(clazz.getName(),type);
+		classMap.put(clazz,type);
 		
 		if(type.isBean() && type.getProperties()!=null && type.getProperties().size()>0){
 			for(Property property:type.getProperties().values()){
-				if(!classMap.containsKey(property.getType().getName())){
+				if(!classMap.containsKey(property.getType())){
 					register(property.getType());
 				}
 			}
 		}
-		if(type.getKeyType()!=null && !classMap.containsKey(type.getKeyType().getName())){
+		if(type.getKeyType()!=null && !classMap.containsKey(type.getKeyType())){
 			register(type.getKeyType());
 		}
-		if(type.getValueType()!=null && !classMap.containsKey(type.getValueType().getName())){
+		if(type.getValueType()!=null && !classMap.containsKey(type.getValueType())){
 			register(type.getValueType());
 		}
 		
 	}
 	
 	public static synchronized Type getType(Class<?> clazz){
-		if(!classMap.containsKey(clazz.getName())){
+		if(!classMap.containsKey(clazz)){
 			register(clazz);
 		}
-		return classMap.get(clazz.getName()); 
+		return classMap.get(clazz); 
 	}
 	
 	public static synchronized List<Type> getTypes(){
