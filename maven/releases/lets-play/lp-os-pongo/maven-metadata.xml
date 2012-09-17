@@ -3,10 +3,11 @@
   <groupId>lets-play</groupId>
   <artifactId>lp-os-pongo</artifactId>
   <versioning>
-    <release>0.0.1</release>
+    <release>1.0.0</release>
     <versions>
       <version>0.0.1</version>
+      <version>1.0.0</version>
     </versions>
-    <lastUpdated>20120912022141</lastUpdated>
+    <lastUpdated>20120916154626</lastUpdated>
   </versioning>
 </metadata>
