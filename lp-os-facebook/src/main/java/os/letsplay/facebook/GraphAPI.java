@@ -4,11 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringWriter;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.channels.FileChannel.MapMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +13,6 @@ import java.util.Set;
 import javax.net.ssl.HttpsURLConnection;
 
 import os.letsplay.json.JSON;
-import os.letsplay.json.JsonParseError;
 import os.letsplay.utils.StringUtils;
 
 
@@ -115,9 +110,7 @@ public class GraphAPI {
 							throw new GraphApiException("Unknown response format <"+format+">");
 					}
 				}else{
-					GraphApiException error = new GraphApiException();
-					error.decodeJson(response);
-					throw error;	
+					throw new GraphApiException().json(response);	
 				}
 			}catch (GraphApiException e) {
 				throw e;

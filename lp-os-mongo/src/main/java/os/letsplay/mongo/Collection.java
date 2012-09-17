@@ -5,7 +5,6 @@ import java.util.Map;
 
 import os.letsplay.bson.BSON;
 import os.letsplay.bson.BsonId;
-import os.letsplay.bson.BsonModel;
 import os.letsplay.bson.annotations.BsonDocument;
 import os.letsplay.mongo.ops.OpDelete;
 import os.letsplay.mongo.ops.OpInsert;
@@ -13,6 +12,8 @@ import os.letsplay.mongo.ops.OpQuery;
 import os.letsplay.mongo.ops.OpReply;
 import os.letsplay.mongo.ops.OpUpdate;
 import os.letsplay.mongo.ops.Result;
+import os.letsplay.utils.reflection.Definition;
+import os.letsplay.utils.reflection.Definitions;
 
 
 
@@ -42,7 +43,9 @@ public class Collection<T> {
 		
 		if(clazz.isAnnotationPresent(BsonDocument.class)){
 			BsonDocument entity = clazz.getAnnotation(BsonDocument.class);
-			this.name = entity.collection();
+			if(entity.collection().length()>0){
+				this.name = entity.collection();
+			}
 		}
 	}
 	
@@ -67,7 +70,7 @@ public class Collection<T> {
 		return find(query,fields,limit,skip,false);
 	}
 	
-	public Page<T> find(Object query, String fields, int limit, int skip, boolean single) throws Exception{
+	private Page<T> find(Object query, String fields, int limit, int skip, boolean single) throws Exception{
 		if(query!=null && query instanceof String){
 			String queryString = (String)query;
 			if(queryString.charAt(0)=='{'){
@@ -183,37 +186,26 @@ public class Collection<T> {
 		}
     	return 0;
     }
-    
-    public Boolean save(Map<String,Object> document) throws Exception {
-		if(!document.containsKey("_id")){
-			document.put("_id",BsonId.get());
+        
+	public Boolean save(T document) throws Exception {
+		Definition def = Definitions.get(document.getClass());
+		if(def.type().equals(Definitions.BEAN)){
+			Object id = def.value(document, "id");
+			if(id==null){
+				id = BsonId.get();
+				def.value(document, "id", id);
+			}
+			byte[] bytes = BSON.encode(document);
+			
+			Object query = Query.start("_id").is(id).getQuery();
+			OpUpdate q  = new OpUpdate(name(),query,bytes,true,1);
+	    	OpReply  r  = call(q);
+	    	Result   rs = r.getResult(Result.class);
+	    	
+	    	return !rs.hasError();	
+		}else{
+			return false;
 		}
-		
-		byte[] bytes = BSON.encode(document);
-		
-		Object query = Query.start("_id").is(document.get("_id")).getQuery();
-		OpUpdate q  = new OpUpdate(name(),query,bytes,true,1);
-    	OpReply  r  = call(q);
-    	Result   rs = r.getResult(Result.class);
-    	
-    	return !rs.hasError();
-    }
-    
-	public <F extends BsonModel> Boolean save(F document) throws Exception {
-		
-		if(document.id()==null){
-			document.id(BsonId.get());
-		}
-		
-		byte[] bytes = BSON.encode(document);
-		
-		
-		Object query = Query.start("_id").is(document.id()).getQuery();
-		OpUpdate q  = new OpUpdate(name(),query,bytes,true,1);
-    	OpReply  r  = call(q);
-    	Result   rs = r.getResult(Result.class);
-    	
-    	return !rs.hasError();		
     }
         
 	private OpReply call(Message message) throws Exception {

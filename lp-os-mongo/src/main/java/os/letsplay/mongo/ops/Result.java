@@ -1,6 +1,7 @@
 package os.letsplay.mongo.ops;
 
 import os.letsplay.bson.BSON;
+import os.letsplay.bson.BsonParseError;
 
 public class Result {
 	
@@ -62,6 +63,10 @@ public class Result {
 	
 	@Override
 	public String toString() {
-		return BSON.decode(BSON.encode(this)).toString();
+		try{
+			return BSON.decode(BSON.encode(this)).toString();
+		}catch (BsonParseError e) {
+			return "INVALID RESULT";
+		}
 	}
 }

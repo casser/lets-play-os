@@ -1,6 +1,5 @@
 package os.letsplay.utils;
 
-import java.nio.charset.Charset;
 import java.util.Arrays;
 
 public class Base32 {

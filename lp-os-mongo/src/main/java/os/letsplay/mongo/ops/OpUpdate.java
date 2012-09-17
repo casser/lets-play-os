@@ -2,6 +2,7 @@ package os.letsplay.mongo.ops;
 
 import os.letsplay.bson.BSON;
 import os.letsplay.bson.BsonByteArray;
+import os.letsplay.bson.BsonParseError;
 import os.letsplay.mongo.Messages;
 
 
@@ -66,7 +67,7 @@ public class OpUpdate extends CollMsg {
 	}
 	
 	@Override
-	protected void readBody(BsonByteArray bin) {
+	protected void readBody(BsonByteArray bin) throws BsonParseError {
 		bin.readInt();//ZERO
 		setCollection(bin.readCString());
 		setFlags(bin.readInt());

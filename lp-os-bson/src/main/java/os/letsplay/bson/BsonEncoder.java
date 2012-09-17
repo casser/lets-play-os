@@ -6,10 +6,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import os.letsplay.bson.annotations.BsonIgnore;
+import os.letsplay.bson.annotations.BsonDocument;
 import os.letsplay.bson.binary.Binary;
-import os.letsplay.utils.Types;
-import os.letsplay.utils.Types.Simple;
+import os.letsplay.utils.reflection.Definition;
+import os.letsplay.utils.reflection.DefinitionProperty;
+import os.letsplay.utils.reflection.Definitions;
+import os.letsplay.utils.reflection.Simple;
+import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 
 public class BsonEncoder {
@@ -22,15 +25,21 @@ public class BsonEncoder {
 		bson = new BsonByteArray();
 	}
 	
-	private byte parseType ( Object object ) {
+	private byte parseType ( Object object ) throws ReflectionException {
+		
+		
 		if(object instanceof byte[]){
 			return BSON.BINARY;
 		}
 		if(object == null){
 			return BSON.NULL;
 		}
-		Types.Type type = Types.getType(object.getClass());
-		if ( String.class.isAssignableFrom(object.getClass()) || type.isEnum() ) {
+		Definition def = Definitions.get(object.getClass());
+	
+		if ( 
+			String.class.isAssignableFrom(object.getClass()) || 
+			def.type().equals(Definitions.ENUM) 
+		) {
 			return BSON.STRING;
 		} else if ( Boolean.class.isAssignableFrom(object.getClass()) ) {
 			return BSON.BOOLEAN;
@@ -46,15 +55,23 @@ public class BsonEncoder {
 			return BSON.STRING;
 		} else if ( Date.class.isAssignableFrom(object.getClass()) ) {
 			return BSON.UTC;
-		} else if ( UUID.class.isAssignableFrom(object.getClass()) ) {
+		} else if ( 
+			UUID.class.isAssignableFrom(object.getClass()) 			|| 
+			BsonBinary.class.isAssignableFrom(object.getClass()) 	||
+			Binary.class.isAssignableFrom(object.getClass())
+		) {
 			return BSON.BINARY;
-		} else if ( BsonBinary.class.isAssignableFrom(object.getClass()) ) {
-			return BSON.BINARY;
-		} else if ( Binary.class.isAssignableFrom(object.getClass()) ) {
-			return BSON.BINARY;
-		} else if ( object.getClass().isArray() || List.class.isAssignableFrom(object.getClass()) || Set.class.isAssignableFrom(object.getClass()) || type.isArray()) {
+		} else if ( 
+			object.getClass().isArray() 							|| 
+			List.class.isAssignableFrom(object.getClass()) 			|| 
+			Set.class.isAssignableFrom(object.getClass()) 			|| 
+			def.type().equals(Definitions.ARRAY) 
+		) {
 			return BSON.ARRAY;
-		} else if ( Map.class.isAssignableFrom(object.getClass()) || type.isBean() ) {
+		} else if ( 
+			Map.class.isAssignableFrom(object.getClass()) 			|| 
+			def.type().equals(Definitions.BEAN) 
+		) {
 			return BSON.DOCUMENT;
 		} 
 		return BSON.NULL;
@@ -84,43 +101,43 @@ public class BsonEncoder {
 		}
 		int sPos = bson.position();
 		bson.writeInt(0);
-		Types.Type type = Types.getType(document.getClass());
-		Boolean isModel = BsonModel.class.isAssignableFrom(document.getClass());
-		if(type.isBean()){
-			if(isModel){
-				BsonModel model = (BsonModel)document;
-				//bson.writeBytes(new byte[BsonModel.Info.LENGTH]);
-				Object id 		= model.id();
-				if(parseType(id)==BSON.DOCUMENT && Simple.class.isAssignableFrom(id.getClass())){
-					id = ((Simple)id).toSimple();
+		Definition def = Definitions.get(document.getClass());
+		Boolean isModel = document.getClass().isAnnotationPresent(BsonDocument.class);
+		if(def.type().equals(Definitions.BEAN)){
+			for(DefinitionProperty property:def.properties()){
+				String key  			= (String)property.name();
+				if(isModel && key.equals("id")){
+					key = "_id";
 				}
-				writeElement(parseType(id),"_id",id);
-			}
-			Map<String, Types.Property> properties = type.getProperties();
-			for(Map.Entry<String, Types.Property> entry:properties.entrySet()){
-				String key  			= (String)entry.getKey();
-				Types.Property property = entry.getValue();
-				if(!property.hasAnnotation(BsonIgnore.class)){
-					Object val 				= property.invokeGetter(document);
+				if(property.hasScope("bson")){
+					Object val 	= property.invokeGetter(document);
 					writeElement(parseType(val),key,val);
 				}
 			}
-		}else if(type.isMap()){
+		}else if(def.type().equals(Definitions.MAP)){
 			if(Map.class.isAssignableFrom(document.getClass())){
 				Map<?,?> map = (Map<?,?>)document;
-				for(Map.Entry<?,?> entry:map.entrySet()){
-					Object key  = entry.getKey();
-					Object val  = entry.getValue();
-					writeElement(parseType(val),key.toString(),val);
+				if(map.size()>0){
+					for(Map.Entry<?,?> entry:map.entrySet()){
+						Object key  = entry.getKey();
+						Object val  = entry.getValue();
+						writeElement(parseType(val),key.toString(),val);
+					}
+				}else{
+					throw new EmptyObjectException();
 				}
 			}
-		}else if(type.isArray()){
+		}else if(def.type().equals(Definitions.ARRAY)){
 			if(List.class.isAssignableFrom(document.getClass())){
 				List<?> list = (List<?>)document;
-				for(int i=0;i<list.size();i++){
-					Object key  = new Integer(i).toString();
-					Object val  = list.get(i);
-					writeElement(parseType(val),key.toString(),val);
+				if(list.size()>0){
+					for(int i=0;i<list.size();i++){
+						Object key  = new Integer(i).toString();
+						Object val  = list.get(i);
+						writeElement(parseType(val),key.toString(),val);
+					}
+				}else{
+					throw new EmptyObjectException();
 				}
 			}else
 			if(Set.class.isAssignableFrom(document.getClass())){
@@ -138,10 +155,14 @@ public class BsonEncoder {
 			}else
 			if(document.getClass().isArray()){
 				Object[] list = (Object[])document;
-				for(int i=0;i<list.length;i++){
-					String key  = new Integer(i).toString();
-					Object val  = list[i];
-					writeElement(parseType(val),key,val);
+				if(list.length>0){
+					for(int i=0;i<list.length;i++){
+						String key  = new Integer(i).toString();
+						Object val  = list[i];
+						writeElement(parseType(val),key,val);
+					}
+				}else{
+					throw new EmptyObjectException();
 				}
 			}
 		}
@@ -154,16 +175,6 @@ public class BsonEncoder {
 		bson.writeInt(length);
 		bson.position(ePos);
 		
-		/*if(isModel){
-			BsonModel model = (BsonModel)document;
-			BsonModel.Info info = model.info();
-			
-			if(model.info()==null){
-				info = new BsonModel.Info(document.getClass());
-				model.info(info);
-			}
-			info.commit(bson.buffer());
-		}*/
 	}
 	
 	private void writeElement(byte type, String key, Object val) throws Exception {

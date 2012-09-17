@@ -515,6 +515,10 @@ public class Query implements IQuery{
     }
     
     public String toString(){
-    	return JSON.encode(toMap());
+    	try {
+			return JSON.encode(toMap());
+		} catch (JsonParseError e) {
+			return "Invalid query object";
+		}
     }
 }

@@ -1,0 +1,11 @@
+{
+  "stringKey"		: "f7bf1ad8196d050b3768d4fc737fc846",
+  "numberKeyInt"	: 123456,
+  "numberKeyFloat"	: 123456.123,
+  "numberKeyHex"	: 0x1234FF,
+  "booleanKey"		: true,
+  "booleanKey"		: false,
+  "nullKey"			: null,
+  "arrayKey"		: ['f7bf1ad8196d050b3768d4fc737fc846',0x445566,123456,true,false,null],
+  "objectKey"		: {'a':'av','b':1,'c':true,'d':false}
+}

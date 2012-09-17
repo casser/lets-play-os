@@ -4,7 +4,7 @@
 
 	<groupId>lets-play</groupId>
 	<artifactId>lp-os-facebook</artifactId>
-	<version>0.0.1</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>lp-os-facebook</name>
@@ -17,10 +17,6 @@
 		<repository>
 			<id>lets-play-os</id>
 			<url>http://casser.github.com/lets-play-os/maven/releases</url>
-		</repository>
-		<repository>
-			<id>typesafe</id>
-			<url>http://repo.typesafe.com/typesafe/releases/</url>
 		</repository>
 	</repositories>
 	<distributionManagement>
@@ -39,7 +35,7 @@
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-json</artifactId>
-			<version>0.0.1</version>
+			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 	<scm>
@@ -50,13 +46,4 @@
 	<organization>
 		<name>Lets Play It</name>
 	</organization>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>play</groupId>
-				<artifactId>play_2.9.1</artifactId>
-				<version>2.0.3</version>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 </project>

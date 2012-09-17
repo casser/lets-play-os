@@ -32,6 +32,47 @@ public class StringUtils {
             .toString();
     }
 	
+	public static String toClassNameNotation(String str) {
+		return capitalize(toVariableNotation(str));
+	}
+	
+	public static String toVariableNotation(String str) {
+		StringBuilder result = new StringBuilder();
+        for(int i=0;i<str.length();i++){
+        	char ch = str.charAt(i);
+        	if(ch=='_'){
+        		ch =str.charAt(++i);
+        		result.append(Character.toUpperCase(ch));
+        	}else{
+        		result.append(Character.toLowerCase(ch));
+        	}
+        }
+        return result.toString();
+	}
+	
+	public static String toUnderscoredNotation(String str) {
+		if(str==null || str.length()==0){
+			return str;
+		}
+		StringBuilder result = new StringBuilder();
+		result.append(Character.toLowerCase(str.charAt(0)));
+        for(int i=1;i<str.length();i++){
+        	char ch = str.charAt(i);
+        	switch (Character.getType(ch)) {
+        		case Character.DECIMAL_DIGIT_NUMBER:
+				case Character.UPPERCASE_LETTER:
+					if(str.charAt(i-1)!='_'){
+						result.append('_');
+					}
+					result.append(Character.toLowerCase(ch));
+				break;
+				default:
+					result.append(Character.toLowerCase(ch));
+			}
+        }
+        return result.toString();
+    }
+	
 	@SuppressWarnings("unchecked")
 	public static <T> String join(T... elements) {
         return join(elements, null);
@@ -68,4 +109,8 @@ public class StringUtils {
         }
         return buf.toString();
     }
+
+	
+
+	
 }

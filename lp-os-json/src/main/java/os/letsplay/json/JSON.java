@@ -39,7 +39,10 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import os.letsplay.utils.reflection.exceptions.ReflectionException;
+
 public class JSON {
+	
 	public static interface Hack {
 		public String key();
 		public Object execute(String source);
@@ -72,24 +75,35 @@ public class JSON {
 		return decode(document,null);
 	}
 	
-	public static <T> T decode(File file) throws java.io.IOException, JsonParseError{
+	public static <T> T decode(File file) throws JsonParseError{
 		return decode(file,null);
 	}
 	
-	public static <T> T decode(File file, Class<T> type) throws java.io.IOException, JsonParseError{
-	    byte[] buffer = new byte[(int) file.length()];
-	    BufferedInputStream f = null;
-	    try {
-	        f = new BufferedInputStream(new FileInputStream(file));
-	        f.read(buffer);
-	    } finally {
-	        if (f != null) try { f.close(); } catch (IOException ignored) { }
-	    }
-	    return decode(new String(buffer),type);
+	public static <T> T decode(File file, Class<T> type) throws JsonParseError{
+		try{
+			byte[] buffer = new byte[(int) file.length()];
+		    BufferedInputStream f = null;
+		    try {
+		        f = new BufferedInputStream(new FileInputStream(file));
+		        f.read(buffer);
+		    } finally {
+		        if (f != null) {
+		        	try { f.close(); } 
+		        	catch (IOException ignored) {}
+		        }
+		    }
+		    return decode(new String(buffer),type);
+		}catch(Exception ex){
+			throw new JsonParseError(ex.getMessage(),ex);
+		}
 	}
 	
 	public static <T> T decode(String document, Class<T> type) throws JsonParseError{
-		return (new JsonDecoder().decode(document,type));
+		try{
+			return (new JsonDecoder().decode(document,type));
+		}catch(ReflectionException ex){
+			throw new JsonParseError(ex.getMessage(),ex);
+		}
 	}
 	
 	public static void addHack(Hack hack){
@@ -106,25 +120,33 @@ public class JSON {
 	}
 	
 	
-	public static String schema(Class<?> document){
+	public static String schema(Class<?> document) throws ReflectionException, JsonParseError{
 		return schema(document,false);
 	}
-	public static String schema(Class<?> document, Boolean formated){
+	public static String schema(Class<?> document, Boolean formated) throws ReflectionException, JsonParseError{
 		return new JsonSchemaEncoder(formated).encode(document);
 	}
 	
-	public static String encode(Object document){
+	public static String encode(Object document) throws JsonParseError{
 		return encode(document,false,false);
 	}
-	public static String encode(Object document, Boolean formated){
+	public static String encode(Object document, Boolean formated) throws JsonParseError{
 		return encode(document,formated,false);
 	}
-	public static String encode(Object document, Boolean formated, Boolean commented){
+	public static String encode(Object document, Boolean formated, Boolean commented) throws JsonParseError{
 		return new JsonEncoder(formated,commented).encode(document);
 	}
-
+	
 	public static void print(Object obj) {
-		System.out.println(encode(obj,true));
+		print(obj,false);
+	}
+	
+	public static void print(Object obj,Boolean comments) {
+		try {
+			System.out.println(encode(obj,true,comments));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 }

@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import os.letsplay.bson.BsonParseError;
 import os.letsplay.mongo.Message;
 import os.letsplay.mongo.Messages;
 import os.letsplay.mongo.ops.OpReply;
@@ -32,11 +33,11 @@ public class MongoChannel {
     	return available;
     }
     
-    public OpReply send(Message message) {
+    public OpReply send(Message message) throws BsonParseError {
     	return send(message,10000);
     }
     
-    public synchronized OpReply send(Message message, int timeout) {
+    public synchronized OpReply send(Message message, int timeout) throws BsonParseError {
     	available = false;
 		OpReply reply=null;
 		

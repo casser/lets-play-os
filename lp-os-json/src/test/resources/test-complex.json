@@ -1,0 +1,12 @@
+{
+  "nestedArray"	:[
+  	{'a':'string value','b':123456,'c':true,'d':false,'e':'null'},
+  	{'a':'string value','b':123456,'c':true,'d':false,'e':'null'},
+  	{'a':'string value','b':123456,'c':true,'d':false,'e':'null'}
+  ],
+  "nestedMap"	:{
+	  "numberArray"		:[1,2,3,4],
+	  "booleanArray"	:[true,false],
+	  "stringArray"		:['true','false']
+  }
+}

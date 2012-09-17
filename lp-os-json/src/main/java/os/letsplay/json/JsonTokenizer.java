@@ -1,49 +1,18 @@
-/*
-  Copyright (c) 2008, Adobe Systems Incorporated
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without 
-  modification, are permitted provided that the following conditions are
-  met:
-
-  * Redistributions of source code must retain the above copyright notice, 
-    this list of conditions and the following disclaimer.
-  
-  * Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the 
-    documentation and/or other materials provided with the distribution.
-  
-  * Neither the name of Adobe Systems Incorporated nor the names of its 
-    contributors may be used to endorse or promote products derived from 
-    this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR 
-  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
 package os.letsplay.json;
 
-import java.nio.CharBuffer;
-
-public class JsonTokenizer
-{
+public class JsonTokenizer {
 	
 	
 	
 	private String jsonString;
 	private int loc;
+	private int line;
+	private int pos;
+	private int level;
 	private char ch;
 	
-	//private const controlCharsRegExp:RegExp = /[\x00-\x1F]/;
+	private JsonToken token = null;
 	
 	/**
 	 * Constructs a new JSONDecoder to parse a JSON string
@@ -54,7 +23,10 @@ public class JsonTokenizer
 	 */
 	public JsonTokenizer( String s) {
 		jsonString = s;
-		loc = 0;
+		loc 	= 0;
+		line 	= 1;
+		pos  	= -1;
+		level	= 0;
 		nextChar();
 	}
 	
@@ -63,191 +35,133 @@ public class JsonTokenizer
 	 * the character to the next character after the token
 	 * @throws JsonParseError 
 	 */
-	public JsonToken getNextToken() throws JsonParseError
-	{
+	public JsonToken nextToken() throws JsonParseError {
+		String comment = skipIgnored();
+		int sLoc  = loc;
+		int sPos  = pos;
+		int sLine = line;
 		
-		JsonToken token = null;
-		
-		// skip any whitespace / comments since the last 
-		// token was read
-		skipIgnored();
-		int lastLoc = 0;
-		// examine the new character and see what we have...
-		switch ( ch )
-		{
+		switch (ch) {
 			case '{':
-				token = JsonToken.create( JsonToken.Type.LEFT_BRACE, ch );
+				token = JsonToken.create( JsonToken.Type.OBJECT_START);
+				token.level(level++);
 				nextChar();
 			break;
 			case '}':
-				token = JsonToken.create( JsonToken.Type.RIGHT_BRACE, ch );
+				token = JsonToken.create( JsonToken.Type.OBJECT_END);
 				nextChar();
+				token.level(--level);
 			break;
 			case '[':
-				token = JsonToken.create( JsonToken.Type.LEFT_BRACKET, ch );
+				token = JsonToken.create( JsonToken.Type.ARRAY_START);
+				token.level(level++);
 				nextChar();
 			break;
 			case ']':
-				token = JsonToken.create( JsonToken.Type.RIGHT_BRACKET, ch );
+				token = JsonToken.create( JsonToken.Type.ARRAY_END);
+				token.level(--level);				
 				nextChar();
 			break;
 			case ',':
-				token = JsonToken.create( JsonToken.Type.COMMA, ch );
+				token = JsonToken.create( JsonToken.Type.COMMA);
+				token.level(level);
 				nextChar();
 			break;
 			case ':':
-				token = JsonToken.create( JsonToken.Type.COLON, ch );
+				token = JsonToken.create( JsonToken.Type.COLON);
+				token.level(level);
 				nextChar();
 			break;
-			case 't': // attempt to read true
-				lastLoc = loc;
-				String possibleTrue = "t" + nextChar() + nextChar() + nextChar();
-				if ( possibleTrue.equals("true") ){
-					token = JsonToken.create( JsonToken.Type.TRUE, true );
-					nextChar();
-				}else{
-					loc = lastLoc;
-				}
-			break;
-			case 'f': // attempt to read false
-				lastLoc = loc;
-				String possibleFalse = "f" + nextChar() + nextChar() + nextChar() + nextChar();
-				
-				if ( possibleFalse.equals("false"))
-				{
-					token = JsonToken.create( JsonToken.Type.FALSE, false );
-					nextChar();
-				}else{
-					loc = lastLoc;
-				}
-			break;
-			case 'n': // attempt to read null
-				lastLoc = loc;
-				String possibleNull = "n" + nextChar() + nextChar() + nextChar();
-				if ( possibleNull == "null" ){
-					token = JsonToken.create( JsonToken.Type.NULL, null );
-					nextChar();
-				}else{
-					loc = lastLoc;
-				}
-				break;
 			case '\"': 
 			case '\'': 
 				token = readString();
+				token.level(level);
 			break;
 			default:
-				// see if we can read a number
-				if ( isDigit( ch ) || ch == '-' ){
-					token = readNumber();
-				}
-				else if ( ch == 0 ){
-					// check for reading past the end of the string
+				if ( ch == 0 ){
 					token = null;
-				}else {
-					String possibleKeyString = ""+ch;
-					while(isKeyChar(nextChar())){
-						possibleKeyString = possibleKeyString+ch;
-					}
-					if(possibleKeyString.matches("[a-zA-Z09]+\\(.*\\)")){
-						String hackName = possibleKeyString.substring(0,possibleKeyString.indexOf('('));
-						if(JSON.hasHack(hackName)){
-							token = JsonToken.create(JsonToken.Type.STRING,JSON.getHack(hackName).execute(possibleKeyString.substring(
-								possibleKeyString.indexOf('(')+1,
-								possibleKeyString.indexOf(')')
-							)));
-						}
-					}else{
-						token = JsonToken.create(JsonToken.Type.STRING,possibleKeyString);	
-					}
-					
+				}else{
+					token = readUnknownString();
+					token.level(level);
 				}
+		}
+		int eLoc  = loc;
+		int ePos  = pos;
+		int eLine = line;
+		
+		if(token!=null){
+			token.positions(sLoc,eLoc,sLine,eLine,sPos,ePos);
+			token.comment(comment);
 		}
 		return token;
 	}
-
-	private JsonToken readString() throws JsonParseError{
-		// Rather than examine the string character-by-character, it's
-		// faster to use indexOf to try to and find the closing quote character
-		// and then replace escape sequences after the fact.
-		
-		// Start at the current input stream position
-		
+	
+	private JsonToken readUnknownString() throws JsonParseError {
+		StringBuffer string = new StringBuffer();
+		string.append(ch);
+		while(isKeyChar(nextChar())){
+			string.append(ch);
+		}
+		return JsonToken.create(JsonToken.Type.STRING,string.toString().trim());
+	}
+	
+	private JsonToken readString() throws JsonParseError{	
 		int quoteIndex = loc;
-		do
-		{
+		do {
 			// Find the next quote in the input stream
 			quoteIndex = jsonString.indexOf( ch, quoteIndex );
-			
-			if ( quoteIndex >= 0 )
-			{
+			if ( quoteIndex >= 0 ){
 				// We found the next double quote character in the string, but we need
 				// to make sure it is not part of an escape sequence.
-				
 				// Keep looping backwards while the previous character is a backslash
 				int backspaceCount = 0;
 				int backspaceIndex = quoteIndex - 1;
-				while ( jsonString.charAt( backspaceIndex ) == '\\' )
-				{
+				while ( jsonString.charAt( backspaceIndex ) == '\\' ){
 					backspaceCount++;
 					backspaceIndex--;
 				}
-				
 				// If we have an even number of backslashes, that means this is the ending quote 
-				if ( ( backspaceCount & 1 ) == 0 )
-				{
+				if ( ( backspaceCount & 1 ) == 0 ){
 					break;
 				}
-				
 				// At this point, the quote was determined to be part of an escape sequence
 				// so we need to move past the quote index to look for the next one
 				quoteIndex++;
-			}
-			else // There are no more quotes in the string and we haven't found the end yet
-			{
+			}else{ // There are no more quotes in the string and we haven't found the end yet
 				parseError( "Unterminated string literal" );
 			}
 		} while ( true );
-		
 		// Unescape the string
 		// the token for the string we'll try to read
 		JsonToken token = JsonToken.create( 
-				JsonToken.Type.STRING,
-				// Attach resulting string to the token to return it
-				unescapeString( jsonString.substring( loc, quoteIndex) ) );
-		
+			JsonToken.Type.STRING,
+			unescapeString( jsonString.substring( loc, quoteIndex) ) 
+		);
 		// Move past the closing quote in the input string.  This updates the next
 		// character in the input stream to be the character one after the closing quote
-		loc = quoteIndex + 1;
-		nextChar();
-		
+		while (loc < quoteIndex + 2) {
+			nextChar();
+		}		
 		return token;
 	}
 	
 	public String unescapeString( String input ) throws JsonParseError{
-		
 		String result = "";
 		int backslashIndex = 0;
 		int nextSubstringStartPosition = 0;
 		int len = input.length();
-		do
-		{
+		do{
 			// Find the next backslash in the input
 			backslashIndex = input.indexOf( '\\', nextSubstringStartPosition );
-			
-			if ( backslashIndex >= 0 )
-			{
+			if ( backslashIndex >= 0 ){
 				result += input.substring( nextSubstringStartPosition, backslashIndex );
-				
 				// Move past the backslash and next character (all escape sequences are
 				// two characters, except for \\u, which will advance this further)
 				nextSubstringStartPosition = backslashIndex + 2;
-				
 				// Check the next character so we know what to escape
 				char escapedChar = input.charAt( backslashIndex + 1 );
-				switch ( escapedChar )
-				{
+				switch ( escapedChar ){
 					// Try to list the most common expected cases first to improve performance
-					
 					case '"':
 						result += escapedChar;
 						break; // quotation mark
@@ -262,250 +176,121 @@ public class JsonTokenizer
 						break; // carriage return
 					case 't':
 						result += '\t';
-						break; // horizontal tab	
-					
+					break; // horizontal tab	
 					// Convert a unicode escape sequence to it's character value
 					case 'u':
-						
 						// Save the characters as a string we'll convert to an int
 						String hexValue = "";
-						
 						int unicodeEndPosition = nextSubstringStartPosition + 4;
-						
 						// Make sure there are enough characters in the string leftover
-						if ( unicodeEndPosition > len )
-						{
+						if ( unicodeEndPosition > len ){
 							parseError( "Unexpected end of input.  Expecting 4 hex digits after \\u." );
 						}
-						
 						// Try to find 4 hex characters
-						for ( int i = nextSubstringStartPosition; i < unicodeEndPosition; i++ )
-						{
+						for ( int i = nextSubstringStartPosition; i < unicodeEndPosition; i++ )	{
 							// get the next character and determine
 							// if it's a valid hex digit or not
 							char possibleHexChar = input.charAt( i );
-							if ( !isHexDigit( possibleHexChar ) )
-							{
+							if ( !isHexDigit( possibleHexChar ) ){
 								parseError( "Excepted a hex digit, but found: " + possibleHexChar );
 							}
-							
 							// Valid hex digit, add it to the value
 							hexValue += possibleHexChar;
 						}
-						
 						// Convert hexValue to an integer, and use that
 						// integer value to create a character to add
 						// to our string.
-						
 						result += String.valueOf((char)Integer.parseInt(hexValue, 16 ));
-						
 						// Move past the 4 hex digits that we just read
 						nextSubstringStartPosition = unicodeEndPosition;
-						break;
-					
+					break;
 					case 'f':
 						result += '\f';
-						break; // form feed
+					break; // form feed
 					case '/':
 						result += '/';
-						break; // solidus
+					break; // solidus
 					case 'b':
 						result += '\b';
-						break; // bell
+					break; // bell
 					default:
 						result += '\\' + escapedChar; // Couldn't unescape the sequence, so just pass it through
 				}
-			}
-			else
-			{
-				// No more backslashes to replace, append the rest of the string
+			}else{
 				result += input.substring( nextSubstringStartPosition );
 				break;
 			}
-			
 		} while ( nextSubstringStartPosition < len );
-		
 		return result;
 	}
 	
-	/**
-	 * Attempts to read a number from the input string.  Places
-	 * the character location at the first character after the
-	 * number.
-	 *
-	 * @return The JSONToken with the number value if a number could
-	 * 		be read.  Throws an error otherwise.
-	 * @throws JsonParseError 
-	 */
-	private final JsonToken readNumber() throws JsonParseError {
-		
-		// the string to accumulate the number characters
-		// into that we'll convert to a number at the end
-		String input = "";
-		
-		// check for a negative number
-		if ( ch == '-' )
-		{
-			input += '-';
-			nextChar();
-		}
-		
-		// the number must start with a digit
-		if ( !isDigit( ch ) )
-		{
-			parseError( "Expecting a digit" );
-		}
-		
-		// 0 can only be the first digit if it
-		// is followed by a decimal point
-		if ( ch == '0' )
-		{
-			input += ch;
-			nextChar();
-			
-			// make sure no other digits come after 0
-			if ( isDigit( ch ) )
-			{
-				parseError( "A digit cannot immediately follow 0" );
-			}
-		}
-		else
-		{
-			// read numbers while we can
-			while ( isDigit( ch ) )
-			{
-				input += ch;
-				nextChar();
-			}
-		}
-		
-		// check for a decimal value
-		if ( ch == '.' )
-		{
-			input += '.';
-			nextChar();
-			
-			// after the decimal there has to be a digit
-			if ( !isDigit( ch ) )
-			{
-				parseError( "Expecting a digit" );
-			}
-			
-			// read more numbers to get the decimal value
-			while ( isDigit( ch ) )
-			{
-				input += ch;
-				nextChar();
-			}
-		}
-		
-		// check for scientific notation
-		if ( ch == 'e' || ch == 'E' )
-		{
-			input += "e";
-			nextChar();
-			// check for sign
-			if ( ch == '+' || ch == '-' )
-			{
-				input += ch;
-				nextChar();
-			}
-			
-			// require at least one number for the exponent
-			// in this case
-			if ( !isDigit( ch ) )
-			{
-				parseError( "Scientific notation number needs exponent value" );
-			}
-			
-			// read in the exponent
-			while ( isDigit( ch ) )
-			{
-				input += ch;
-				nextChar();
-			}
-		}
-		return JsonToken.create( JsonToken.Type.NUMBER, input );
-	}
 	
 	private char nextChar() {
 		try{
-			return ch = jsonString.charAt( loc++ );
+			ch = jsonString.charAt( loc++ );
+			if(ch=='\n'){
+				line++; pos=-1;
+			}else{
+				pos++;
+			}
+			return ch;
 		}catch(IndexOutOfBoundsException ex){
 			return ch = 0;
 		}
 	}
 	
-	private void skipIgnored() throws JsonParseError {
+	private String skipIgnored() throws JsonParseError {
+		StringBuffer comments = new StringBuffer();
 		int originalLoc;
 		do {
 			originalLoc = loc;
 			skipWhite();
-			skipComments();
+			comments.append(skipComments());
 		} while ( originalLoc != loc );
+		return comments.toString();
 	}
 	
-	private void skipComments() throws JsonParseError {
+	private String skipComments() throws JsonParseError {
+		StringBuffer sf = new StringBuffer();
 		if ( ch == '/' ) {
-			// Advance past the first / to find out what type of comment
 			nextChar();
-			switch ( ch )
-			{
-				case '/': // single-line comment, read through end of line
-					
-					// Loop over the characters until we find
-					// a newline or until there's no more characters left
-					do
-					{
-						nextChar();
+			switch ( ch ){
+				case '/':
+					do{
+						sf.append(nextChar());
 					} while ( ch != '\n' && ch != 0 );
-					
-					// move past the \n
-					nextChar();
-					
-					break;
-				
-				case '*': // multi-line comment, read until closing */
-					
-					// move past the opening *
-					nextChar();
-					
-					// try to find a trailing */
-					while ( true )
-					{
-						if ( ch == '*' )
-						{
-							// check to see if we have a closing /
+					sf.append(nextChar());
+				break;
+				case '*': 
+					sf.append(nextChar());
+					while ( true ){
+						if ( ch == '*' ){
 							nextChar();
-							if ( ch == '/' )
-							{
-								// move past the end of the closing */
-								nextChar();
+							if ( ch == '/' ){
+								sf.append(nextChar());
 								break;
 							}
+						}else{
+							sf.append(nextChar());
 						}
-						else
-						{
-							// move along, looking if the next character is a *
-							nextChar();
-						}
-						
-						// when we're here we've read past the end of 
-						// the string without finding a closing */, so error
-						if ( ch == 0 )
-						{
+						if ( ch == 0 ){
 							parseError( "Multi-line comment not closed" );
 						}
 					}
-					
-					break;
-				
-				// Can't match a comment after a /, so it's a parsing error
+				break;
 				default:
 					parseError( "Unexpected " + ch + " encountered (expecting '/' or '*' )" );
 			}
 		}
-	
+		if(sf.length()>1){
+			String res  = sf.toString();
+			if(res.length()>0){
+				res = res.substring(0, res.length()-2);
+			}
+			return res+"\n";
+		}else{
+			return "";
+		}
 	}
 	
 	private void skipWhite(){
@@ -515,10 +300,21 @@ public class JsonTokenizer
 	}
 	
 	private Boolean isKeyChar(char ch) {
-		if ( ch=='$' || ch=='_' || ch=='.' || ch=='(' || ch==')' || (ch >= '0' && ch <= '9') ||  (ch >= 'a' && ch <= 'z') ||  (ch >= 'A' && ch <= 'Z') ){
-			return true;
+		char[] excludes = new char[]{
+			JsonToken.Type.COLON.character,
+			JsonToken.Type.COMMA.character,
+			JsonToken.Type.OBJECT_START.character,
+			JsonToken.Type.OBJECT_END.character,
+			JsonToken.Type.ARRAY_START.character,
+			JsonToken.Type.ARRAY_END.character,
+			'\'','"',(char)0
+		};
+		for(char c:excludes){
+			if(ch==c){
+				return false;
+			}
 		}
-		return false;
+		return true;
 	}
 	
 	private Boolean isWhiteSpace(char ch) {
@@ -539,46 +335,61 @@ public class JsonTokenizer
 	public void parseError(String message) throws JsonParseError{
 		throw new JsonParseError( message, loc, jsonString );
 	}
-
-	public String getObjectString() {
-		int d=1;
+	
+	/*
+	public String getObjectString() throws JsonParseError {
+		int d=0;
 		String str = "";
-		switch(jsonString.charAt(loc-1)){
-			case '{': {
-				while(d>0){
-					if(ch==0){
+		try{
+			if(token.type().equals(JsonToken.Type.ARRAY_START) || token.type().equals(JsonToken.Type.OBJECT_START)){
+				switch(token.type()){
+					case LEFT_BRACE: {
+						do{
+							if(token==null){
+								break;
+							}else
+							if(token.type.equals(JsonToken.Type.OBJECT_END)){
+								d--;
+							}else 
+							if(token.type.equals(JsonToken.Type.OBJECT_START)){
+								d++;
+							}
+							
+							str+=token.escapedValue();
+							if(d>0){
+								nextToken();	
+							}
+						}while(d>0);
 						break;
-					}else
-					if(ch=='}'){
-						d--;
-					}else 
-					if(ch=='{'){
-						d++;
 					}
-					str+=ch;
-					nextChar();	
-				}
-				break;
-			}
-			case '[': {
-				while(d>0){
-					if(ch==0){
+					case LEFT_BRACKET:{
+						do{
+							if(token==null){
+								break;
+							}else
+							if(token.type.equals(JsonToken.Type.ARRAY_END)){
+								d--;
+							}else 
+							if(token.type.equals(JsonToken.Type.ARRAY_START)){
+								d++;
+							}
+							
+							str+=token.escapedValue();
+							if(d>0){
+								nextToken();	
+							}
+						}while(d>0);
 						break;
-					}else
-					if(ch==']'){
-						d--;
-					}else 
-					if(ch=='['){
-						d++;
 					}
-					str+=ch;
-					nextChar();	
 				}
-				break;
 			}
+		}catch(Exception ex){
+			
 		}
+		str = str.length()==0?token.value().toString():str;
 		return str;
 	}
+	*/
 }
 
 

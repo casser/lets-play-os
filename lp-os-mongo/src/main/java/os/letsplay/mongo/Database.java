@@ -2,7 +2,6 @@ package os.letsplay.mongo;
 
 import java.util.Map;
 
-import os.letsplay.bson.BsonModel;
 import os.letsplay.mongo.ops.OpQuery;
 import os.letsplay.mongo.ops.OpReply;
 import os.letsplay.utils.MD5;
@@ -27,10 +26,10 @@ public class Database {
 		return mongo;
 	}
 	
-	public <T extends BsonModel> Collection<T> getCollection(String name) {
+	public <T> Collection<T> getCollection(String name) {
 		return new Collection<T>(this, name);
 	}
-	public <T extends BsonModel> Collection<T> getCollection(Class<T> clazz) {
+	public <T> Collection<T> getCollection(Class<T> clazz) {
 		return new Collection<T>(this, clazz);
 	}
 	

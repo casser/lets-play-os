@@ -1,5 +1,6 @@
 package os.letsplay.mongo.nio;
 
+import os.letsplay.bson.BsonParseError;
 import os.letsplay.mongo.Message;
 import os.letsplay.mongo.ops.OpReply;
 
@@ -22,14 +23,6 @@ public class MongoPool {
 		return openChannelsCount;
 	}
 	
-    public MongoPool(String host, int port, int poolSize){
-    	connect(host, port, poolSize);
-    }
-    
-    public MongoPool(String host, int port) {
-		this(host,port,20);
-	}
-
 	private synchronized MongoChannel channel() {
     	MongoChannel channel = null;
     	availableChannelsCount = 0;
@@ -50,11 +43,11 @@ public class MongoPool {
     	return channel;
     }
 	
-    public OpReply send(Message message) {
+    public OpReply send(Message message) throws BsonParseError {
     	return send(message,2000);
     }
     
-    public OpReply send(Message message, int timeout) {
+    public OpReply send(Message message, int timeout) throws BsonParseError {
     	return channel().send(message,timeout);
     }
     

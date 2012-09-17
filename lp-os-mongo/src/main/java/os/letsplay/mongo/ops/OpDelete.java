@@ -1,8 +1,9 @@
 package os.letsplay.mongo.ops;
 
+import os.letsplay.bson.BSON;
 import os.letsplay.bson.BsonByteArray;
-import os.letsplay.bson.BsonDecoder;
 import os.letsplay.bson.BsonEncoder;
+import os.letsplay.bson.BsonParseError;
 import os.letsplay.mongo.Messages;
 
 
@@ -49,11 +50,11 @@ public class OpDelete extends CollMsg {
 	}
 	
 	@Override
-	protected void readBody(BsonByteArray bin) {
+	protected void readBody(BsonByteArray bin) throws BsonParseError {
 		bin.readInt();// ZERO
 		setCollection(bin.readCString());
 		setFlags(bin.readInt());
-		setSelector(new BsonDecoder().decode(bin.readBytes()));
+		setSelector(BSON.decode(bin.readBytes()));
 	}
 	
 }

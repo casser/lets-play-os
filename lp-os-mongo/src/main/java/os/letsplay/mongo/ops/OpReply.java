@@ -5,7 +5,7 @@ import java.util.List;
 
 import os.letsplay.bson.BSON;
 import os.letsplay.bson.BsonByteArray;
-import os.letsplay.bson.BsonEncoder;
+import os.letsplay.bson.BsonParseError;
 import os.letsplay.mongo.Messages;
 
 
@@ -63,7 +63,7 @@ public class OpReply extends BaseMsg {
 		this.skip = skip;
 	}
 	
-	public List<Object> getDocuments() {
+	public List<Object> getDocuments() throws BsonParseError {
 		if(documents==null){
 			documents = new ArrayList<Object>();
 			for(byte[] bytes:frames){
@@ -105,7 +105,7 @@ public class OpReply extends BaseMsg {
 		bin.writeInt( getSkip() );
 		bin.writeInt( documents.size() );
 		for( Object document : documents ) {
-			bin.writeBytes(new BsonEncoder().encode( document ) );
+			bin.writeBytes(BSON.encode( document ) );
 		}
 	}
 	
@@ -121,12 +121,12 @@ public class OpReply extends BaseMsg {
 		}
 	}
 	
-	public <T> T getResult(Class<T> clazz) {
+	public <T> T getResult(Class<T> clazz) throws BsonParseError {
 		return (T) getResults(clazz).get(0);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public <T> List<T> getResults(Class<T> clazz) {
+	public <T> List<T> getResults(Class<T> clazz) throws BsonParseError {
 		setDocumentType(clazz);
 		return (List<T>) getDocuments();
 	}

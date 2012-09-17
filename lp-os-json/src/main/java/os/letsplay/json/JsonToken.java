@@ -32,96 +32,150 @@
 
 package os.letsplay.json;
 
-import os.letsplay.utils.Types;
+import os.letsplay.utils.StringUtils;
 
 	
 public final class JsonToken {
 	
+	
+	private static final Character NOT = (char)0;
 	public static enum Type {
-		UNKNOWN,
-		COMMA,
-		LEFT_BRACE,
-		RIGHT_BRACE,
-		LEFT_BRACKET,
-		RIGHT_BRACKET,
-		COLON,
-		TRUE,
-		FALSE,
-		NULL,
-		STRING,
-		NUMBER,
-		NAN;
-	}
-
-	public Type type;
-	public Object value;
-	
-	public JsonToken( Type type, Object value){
-		this.type = type;
-		this.value = value;
+		
+		COMMA(','),
+		COLON(':'),
+		OBJECT_START('{'),
+		OBJECT_END('}'),
+		ARRAY_START('['),
+		ARRAY_END(']'),
+		
+		STRING(NOT);
+		
+		
+		public Boolean isValue(){
+			return character==NOT;
+		}
+		public final Character character;
+		private Type(Character character) {
+			this.character = character;
+		}
 	}
 	
-	@SuppressWarnings("unchecked")
-	public <T> T readValue(Class<T> t){
-		Object ret = null;
-		
-		if(t==null){
-			switch(type){
-				case NUMBER: t = (Class<T>) Double.class; break;
-				case STRING: t = (Class<T>) String.class; break;
-			}
-		}
-		
-		if(t==null){
-			return null;
-		}
-		
-		if(Double.class.isAssignableFrom(t)){
-			ret =  Double.valueOf(this.value.toString());
-		}else
-		if(Integer.class.isAssignableFrom(t)){
-			ret =  Integer.valueOf(this.value.toString());
-		}else
-		if(Long.class.isAssignableFrom(t)){
-			ret =  Long.valueOf(this.value.toString());
-		}else
-		if(t.equals(value.getClass())){
-			ret = this.value;
-		}else{
-			ret =  convertObject(this.value,t);
-		}
-		return (T)ret; 
+	
+	static JsonToken create( Type type ){
+		return new JsonToken(type, null);
 	}
 	
-	private Object convertObject(Object o, Class<?> cls) {
-		Types.Type type = Types.getType(cls);
-		if(type.isEnum()){
-			return toEnum(o, type);
-		}else
-		if(type.isBean()){
-			return toBean(o, type);
-		}
+	static JsonToken create( Type type, String value){
+		return new JsonToken(type, value);
+	}
+	
+	private Type 	type;
+	private String 	value;
+	private String 	comment;
+	private int 	level;
+	private int 	sLoc;
+	private int 	eLoc;
+	private int 	sLine;
+	private int 	eLine;
+	private int 	sPos ;
+	private int 	ePos ;
+	
+	public JsonToken comment(String comment) {
+		this.comment = comment;
+		return this;
+	}
+	public JsonToken level(int level) {
+		this.level = level;
+		return this;
+	}
+	
+	public Type type() {
 		return type;
 	}
 	
-	@SuppressWarnings("unchecked")
-	private <T> T toBean(Object data, Types.Type type){
-		return (T) type.newInstance(data);
+	
+	
+	public JsonToken( Type type, String value){
+		this.type 	= type;
+		this.value 	= value;
 	}
 	
-	@SuppressWarnings("unchecked")
-	private <T> T toEnum(Object data, Types.Type type){
-		Object[] list = type.getType().getEnumConstants();
-		for(Object item:list){
-			Enum<?> en = (Enum<?>)item;
-			if(en.name().toUpperCase().equals(data.toString().toUpperCase())){
-				return (T) en;
-			}
+	public void positions(int sLoc, int eLoc, int sLine, int eLine, int sPos, int ePos) {
+		this.sLoc 	= sLoc;
+		this.eLoc 	= eLoc;
+		this.sLine 	= sLine;
+		this.eLine 	= eLine;
+		this.sPos 	= sPos;
+		this.ePos 	= ePos;
+	}
+	
+	public Boolean isString() {
+		return (eLoc-sLoc==value.length()+2);
+	}
+	
+	public Boolean isBoolean() {
+		return 
+			value.toLowerCase().equals("true") ||
+			value.toLowerCase().equals("false");
+	}
+	public Boolean isNumber() {
+		if(value.matches("-?\\d*\\.?\\d+")||value.matches("0x\\d{1,8}")){
+			return true;
 		}
-		return null;
+		return false;
+	}
+	public Boolean convertBoolean() {
+		return value.equals("true");
 	}
 	
-	static JsonToken create( Type type, Object value ){
-		return new JsonToken(type, value);
+	public Number convertNumber() {
+		int radix = 10;
+		if(value.indexOf('.')>0){
+			return Double.parseDouble(value);
+		}
+		if(value.matches("0x\\d{1,8}")){
+			value = value.substring(2);
+			radix = 16;
+		}
+		try{
+			return Integer.parseInt(value,radix);
+		}catch (NumberFormatException e) {
+			return Long.parseLong(value,radix);
+		}
+	}
+	
+	public Object value() {
+		if(value==null){
+			return null;
+		}if(isString()){
+			return value;
+		}if(value.equals("null")){
+			return null;
+		}else if(isBoolean()){
+			return convertBoolean();
+		}else if(isNumber()){
+			return convertNumber();
+		}
+		return value;
+	}
+	
+	public String raw() {
+		return value;
+	}
+	
+	@Override
+	public String toString() {
+		StringBuffer sb = new StringBuffer();
+		sb.append(StringUtils.repeat("  ",level));
+		sb.append(this.type.name()+" ");
+		sb.append("[line "+sLine+","+eLine+" pos:"+sPos+","+ePos+" loc:"+sLoc+","+eLoc+"] ");
+		if(this.type.isValue()){
+			sb.append(this.value.getClass().getSimpleName());
+			sb.append("("+this.value+") ");
+		}
+		if(this.comment!=null && this.comment.length()>0){
+			sb.append("/*"+this.comment+"*/");
+		}
+		return sb.toString();
 	}
 }

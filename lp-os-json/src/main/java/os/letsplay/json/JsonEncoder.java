@@ -34,15 +34,18 @@ package os.letsplay.json;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import os.letsplay.json.annotations.JsonIgnore;
 import os.letsplay.utils.StringUtils;
-import os.letsplay.utils.Types;
+import os.letsplay.utils.reflection.Definition;
+import os.letsplay.utils.reflection.DefinitionProperty;
+import os.letsplay.utils.reflection.Definitions;
+import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 
 public class JsonEncoder
@@ -59,16 +62,20 @@ public class JsonEncoder
 		this(false,false);
 	}
 
-	public String encode( Object value)
-	{
-		return convertToString( value, 0 );
+	public String encode( Object value) throws JsonParseError{
+		try{
+			return convertToString( value, 0 );
+		}catch (Exception e) {
+			throw new JsonParseError(e.getMessage(),e);
+		}
 	}
 	
 	private String comment(String text){
 		return commented?"/*"+text+"*/":"";
 	}
 	
-	private String convertToString( Object value, int depth ) {
+	@SuppressWarnings("deprecation")
+	private String convertToString( Object value, int depth ) throws ReflectionException {
 		// determine what value is and convert it based on it's type
 		if(value ==null){
 			return "null";	
@@ -90,7 +97,12 @@ public class JsonEncoder
 		}else 
 		if (Date.class.isAssignableFrom(value.getClass())){
 			// convert boolean to string easily
-			return (new Long(((Date)value).getTime()).toString())+ comment(value.getClass().getSimpleName());
+			Date d = (Date)value;
+			if(d.getSeconds()==0 && d.getHours()==0 && d.getMinutes()==0){
+				return escapeString(new SimpleDateFormat("MM/dd/yyyy").format((Date)value))+ comment(value.getClass().getSimpleName());
+			}else{
+				return (new Long(((Date)value).getTime()/1000).toString())+ comment(value.getClass().getSimpleName());
+			}
 		}else 
 		if (UUID.class.isAssignableFrom(value.getClass())){
 			// convert boolean to string easily
@@ -177,7 +189,7 @@ public class JsonEncoder
 	}
 	
 	@SuppressWarnings("unchecked")
-	private String arrayToString( Object a , int depth ) {
+	private String arrayToString( Object a , int depth ) throws ReflectionException {
 		String s = "";
 		if (List.class.isAssignableFrom(a.getClass())){
 			List<Object> list = ((List<Object>)a);
@@ -225,7 +237,7 @@ public class JsonEncoder
 		}
 	}
 	@SuppressWarnings({ "unchecked" })
-	private String objectToString( Object o , int depth ) {
+	private String objectToString( Object o , int depth ) throws ReflectionException {
 		String el = formated?"\n":"";
 		String d0 = formated?StringUtils.repeat("  ", depth)  :"";
 		String d1 = formated?StringUtils.repeat("  ", depth+1):"";
@@ -235,35 +247,37 @@ public class JsonEncoder
 		if(JsonEncodable.class.isAssignableFrom(o.getClass())){
 			return ((JsonEncodable)o).encodeJson();
 		}
-		Types.Type type = Types.getType(o.getClass());		
-		if(type.isSimple()){
-			return "\""+o.toString()+"\"";
-		}else if (type.isMap()){
-			Map<Object,Object> map = (Map<Object,Object>)o;
-			for(Map.Entry<Object, Object> entry:map.entrySet()){
-				if(entry.getValue()!=null){
-					String vs = convertToString( entry.getValue(), depth+1);
-					if(vs!=null && vs.length()>0){
-						s += d1+escapeString( entry.getKey().toString() ) + ":" +vs+","+el;
-					}
-				}
+		Definition def = Definitions.get(o.getClass());	
+		switch(def.type()){
+			case SIMPLE:{
+				return "\""+o.toString()+"\"";
 			}
-			
-		}else if(type.isBean()){
-			Map<String, Types.Property> properties = type.getProperties();
-			for(Map.Entry<String, Types.Property> entry:properties.entrySet()){
-				Types.Property property = entry.getValue();
-				if(!property.hasAnnotation(JsonIgnore.class)){
-					Object val = property.invokeGetter(o);
-					if(val!=null){
-						String vs =  convertToString( val, depth+1 );
+			case MAP:{
+				Map<Object,Object> map = (Map<Object,Object>)o;
+				for(Map.Entry<Object, Object> entry:map.entrySet()){
+					if(entry.getValue()!=null){
+						String vs = convertToString( entry.getValue(), depth+1);
 						if(vs!=null && vs.length()>0){
 							s += d1+escapeString( entry.getKey().toString() ) + ":" +vs+","+el;
 						}
 					}
 				}
-			}
+			}break;
+			case BEAN:{
+				for(DefinitionProperty property: def.properties()){
+					if(property.hasScope("json")){
+						Object val = property.invokeGetter(o);
+						if(val!=null){
+							String vs =  convertToString( val, depth+1 );
+							if(vs!=null && vs.length()>0){
+								s += d1+escapeString( property.name() ) + ":" +vs+","+el;
+							}
+						}
+					}
+				}
+			}break;
 		}
+		
 		if(s.length()>1){
 			s = s.substring(0,s.length()-(formated?2:1))+el;
 			return "{"+el + s + d0+"}";

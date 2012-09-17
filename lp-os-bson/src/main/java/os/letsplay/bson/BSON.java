@@ -28,10 +28,10 @@ public class BSON {
 	public static final byte MAX_KEY  		= (byte)0x7f;
 	public static final byte MIN_KEY  		= (byte)0xff;
 	
-	public static <T> T decode(byte[] document){
+	public static <T> T decode(byte[] document) throws BsonParseError{
 		return decode(document,null);
 	}
-	public static <T> T decode(byte[] document, Class<T> type){
+	public static <T> T decode(byte[] document, Class<T> type) throws BsonParseError{
 		return (T)(new BsonDecoder().decode(document,type));
 	}
 	

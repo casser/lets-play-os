@@ -1,66 +1,196 @@
-/*
-  Copyright (c) 2008, Adobe Systems Incorporated
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without 
-  modification, are permitted provided that the following conditions are
-  met:
-
-  * Redistributions of source code must retain the above copyright notice, 
-    this list of conditions and the following disclaimer.
-  
-  * Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the 
-    documentation and/or other materials provided with the distribution.
-  
-  * Neither the name of Adobe Systems Incorporated nor the names of its 
-    contributors may be used to endorse or promote products derived from 
-    this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR 
-  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 package os.letsplay.json;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import os.letsplay.utils.Types;
+import os.letsplay.utils.reflection.Definition;
+import os.letsplay.utils.reflection.Definitions;
+import os.letsplay.utils.reflection.DefinitionProperty;
+import os.letsplay.utils.reflection.definitions.ArrayDefinition;
+import os.letsplay.utils.reflection.definitions.BeanDefinition;
+import os.letsplay.utils.reflection.definitions.EnumDefinition;
+import os.letsplay.utils.reflection.definitions.InternalDefinition;
+import os.letsplay.utils.reflection.definitions.MapDefinition;
+import os.letsplay.utils.reflection.definitions.SimpleDefinition;
+import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 	
 public class JsonDecoder {
 	
-	private Object value;
-	private JsonTokenizer tokenizer;
-	private JsonToken token;
+	private static final Boolean DEBUG = false; 
+	
+	private JsonTokenizer 	tokenizer;
+	private JsonToken  		token;
 	
 	@SuppressWarnings("unchecked")
-	public <T> T decode(String document, Class<T> type) throws JsonParseError{
-		
-		tokenizer = new JsonTokenizer(document);
-		
-		nextToken();
-		value = parseValue(type);
-		
-		if (nextToken() != null ){
-			tokenizer.parseError( "Unexpected characters left in input stream" );
+	public <T> T decode(String document, Class<T> clazz) throws JsonParseError, ReflectionException{
+		if(document!=null && document.length()>0){
+			tokenizer	= new JsonTokenizer(document);
+			
+		}else{
+			throw new JsonParseError("Invalid Json Data");
 		}
-		return (T) value;
+		nextToken();
+		return (T) serialize(clazz);
 	}
 	
+	private static void print(Object o){
+		if(DEBUG)System.out.println(o);
+	}
+	
+	private Object serialize(DefinitionProperty property) throws JsonParseError, ReflectionException{
+		return serialize(property!=null?property.clazz():null);
+	}
+	
+	private Object serialize(Class<?> clazz) throws JsonParseError, ReflectionException{
+		if(clazz==null){
+			clazz = Object.class;
+		}
+		return serialize(Definitions.get(clazz));
+	}
+	
+	private Object serialize(Definition definition) throws JsonParseError, ReflectionException{
+		Object		target;
+		if(definition==null){
+			definition = Definitions.get(Object.class);
+		}
+		switch(definition.type()){
+			case SIMPLE	:
+				target = serializeSimple(definition);
+			break;
+			case ENUM	:
+				target = serializeEnum(definition);
+			break;
+			case ARRAY	:
+				target = serializeArray(definition);
+			break;
+			case MAP	:
+				target = serializeMap(definition);
+			break;
+			case BEAN	:
+				target = serializeBean(definition);
+			break;
+			case INTERNAL	:
+				target = serializeInternal(definition);
+			break;
+			default:
+				throw new JsonParseError("Invalid Definition Type <"+definition.type()+">");
+		}
+		return target;
+	}
+	
+	public JsonToken nextToken() throws JsonParseError{
+		token = tokenizer.nextToken();
+		print(token);
+		return token;
+	}
+	
+	private Object serializeInternal(Definition def) throws JsonParseError, ReflectionException{
+		InternalDefinition definition = (InternalDefinition) def;
+		if(definition.clazz()!=Object.class){
+			return null;
+		}
+		switch (token.type()) {
+			case OBJECT_START:
+				return serialize(Map.class);
+			case ARRAY_START:
+				return serialize(List.class);
+			case STRING:
+				return token.value();
+			default:
+				throw new JsonParseError("Invalid Json Data");
+		}
+	}
+	
+	private Object serializeEnum(Definition def) throws JsonParseError{
+		EnumDefinition definition = (EnumDefinition) def;
+		return definition.newInstance(token.value());
+	}
+	
+	private Object serializeSimple(Definition def) throws JsonParseError, ReflectionException{
+		SimpleDefinition definition = (SimpleDefinition) def;
+		return definition.newInstance(token.raw());
+	}
+	
+	private Object serializeArray(Definition def) throws JsonParseError, ReflectionException{
+		ArrayDefinition definition 	= (ArrayDefinition) def;
+		Object target 				= definition.newInstance();
+		Boolean exit = true;
+		do {
+			@SuppressWarnings("unused")
+			JsonToken valueToken 	= nextToken();
+			Object value 			= serialize(definition.valueClazz());
+			JsonToken commaToken 	= nextToken();
+			switch(commaToken.type()){
+				case ARRAY_END:
+					exit=false;
+				case COMMA:
+					definition.add(target,value);
+				break;
+				default:
+					throw new JsonParseError("Unexpected en of object, required ',' or ']' found "+token.toString());
+					
+			}
+		}while (exit);
+		return target;
+	}
+	
+	@SuppressWarnings("unused")
+	private Object serializeMap(Definition def) throws JsonParseError, ReflectionException{
+		MapDefinition definition 	= (MapDefinition) def;
+		Map<Object, Object> target 	= definition.newInstance();
+		Boolean exit = true;
+		do {
+			JsonToken keyToken 		= nextToken();
+			Object key 				= serialize(definition.keyClazz());
+			JsonToken colonToken 	= nextToken();
+			JsonToken valueToken 	= nextToken();
+			Object value 			= serialize(definition.valueClazz());
+			JsonToken commaToken 	= nextToken();
+			switch(commaToken.type()){
+				case OBJECT_END:
+					exit=false;
+				case COMMA:
+					target.put(key, value);
+				break;
+				default:
+					throw new JsonParseError("Unexpected en of object, required ',' or '}' found "+token.toString());
+					
+			}
+		}while (exit);
+		return target;
+	}
+	
+	@SuppressWarnings("unused")
+	private Object serializeBean(Definition def) throws JsonParseError, ReflectionException{
+		BeanDefinition definition 	= (BeanDefinition) def;
+		Object target 				= definition.newInstance();
+		Boolean exit = true;
+		do {
+			JsonToken keyToken 		= nextToken();
+			JsonToken colonToken 	= nextToken();
+			JsonToken valueToken 	= nextToken();
+			DefinitionProperty property = definition.properties().get(
+				keyToken.value().toString()
+			);
+			Object value = serialize(property);
+			JsonToken commaToken 	= nextToken();
+			switch(commaToken.type()){
+				case OBJECT_END:
+					exit=false;
+				case COMMA:
+					if(property!=null && value!=null){
+						property.invokeSetter(target, value);
+					}
+				break;
+				default:
+					throw new JsonParseError("Unexpected en of object, required ',' or '}' found "+token.toString());
+			}
+		}while (exit);
+		return target;
+	}
+	
+	/*
 	private JsonToken nextToken() throws JsonParseError {
 		return token = tokenizer.getNextToken();
 	}
@@ -77,13 +207,13 @@ public class JsonDecoder {
 		}
 	}
 	
-	private <T> T parseArray(Class<T> cls) throws JsonParseError {
+	private <T> T parseArray(Class<T> cls) throws JsonParseError, ReflectionException {
 		
-		Types.Type type;
+		Definition type;
 		if(cls==null){
-			type = Types.getType(ArrayList.class);
+			type = Definitions.get(ArrayList.class);
 		}else{
-			type = Types.getType(cls);	
+			type = Definitions.get(cls);	
 		}
 		T a = type.newInstance();
 		
@@ -126,25 +256,30 @@ public class JsonDecoder {
 		
 	}
 	
-	private Object convertKey(Object o, Class<?> cls) throws JsonParseError {
-		Types.Type type = Types.getType(cls);
-		if(type.isEnum()){
-			return toEnum(o, type);
-		}else
-		if(type.isBean()){
-			return toBean(o, type);
+	@SuppressWarnings("unused")
+	private Object convertKey(Object o, Class<?> cls) throws JsonParseError, ReflectionException {
+		if(cls==null){
+			return o;
 		}
-		return o;
+		Definition def = Definitions.get(cls);
+		switch (def.type()) {
+			case ENUM:
+				return toEnum(o, def);
+			case BEAN:
+				return toBean(o, def);
+			default:
+				return o;
+		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	private <T> T toBean(Object data, Types.Type type){
+	private <T> T toBean(Object data, Definition type){
 		return (T) type.newInstance(data);
 	}
 	
 	@SuppressWarnings("unchecked")
-	private <T> T toEnum(Object data, Types.Type type){
-		Object[] list = type.getType().getEnumConstants();
+	private <T> T toEnum(Object data, Definition type){
+		Object[] list = type.clazz().getEnumConstants();
 		for(Object item:list){
 			Enum<?> en = (Enum<?>)item;
 			if(en.name().toUpperCase().equals(data.toString().toUpperCase())){
@@ -155,40 +290,52 @@ public class JsonDecoder {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void readValue(Object o) throws JsonParseError {
-		Types.Type type = Types.getType(o.getClass());
-		if(List.class.isAssignableFrom(o.getClass())){
-			List<Object> list = (List<Object>)o;
-			list.add(parseValue(type.getValueType()));
-		}else
-		if(Set.class.isAssignableFrom(o.getClass())){
-			Set<Object> list = (Set<Object>)o;
-			list.add(parseValue(type.getValueType()));
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void readValue(Object o, Object k) throws JsonParseError {
-		Types.Type type = Types.getType(o.getClass());
-		if(type.isMap()){
-			Map<Object,Object> map = (Map<Object,Object>)o;
-			map.put(convertKey(k,type.getKeyType()),parseValue(type.getValueType()));
-		}else if(type.isBean()){
-			if(type.getProperties().containsKey(k)){
-				Types.Property property = type.getProperties().get(k);
-				property.invokeSetter(o, parseValue(property.getType()));
+	private void readValue(Object o) throws JsonParseError, ReflectionException {
+		Definition def = Definitions.get(o.getClass());
+		switch(def.type()){
+			case ARRAY:{
+				ArrayDefinition adef = (ArrayDefinition)def;
+				if(List.class.isAssignableFrom(o.getClass())){
+					List<Object> list = (List<Object>)o;
+					list.add(parseValue(adef.valueClazz()));
+				}else
+				if(Set.class.isAssignableFrom(o.getClass())){
+					Set<Object> list = (Set<Object>)o;
+					list.add(parseValue(adef.valueClazz()));
+				}		
 			}
+			break;
 		}
 	}
 	
-	
-	
-	/**
-	 * Attempt to parse an object.
-	 * @throws JsonParseError 
-	 */
 	@SuppressWarnings("unchecked")
-	private <T> T parseObject(Class<T> cls) throws JsonParseError {
+	private void readValue(Object o, Object k) throws JsonParseError, ReflectionException {
+		Definition def = Definitions.get(o.getClass());
+		switch(def.type()){
+			case MAP:{
+				MapDefinition mdef = (MapDefinition)def;
+				Map<Object,Object> map = (Map<Object,Object>)o;
+				map.put(
+					convertKey(k,mdef.keyClazz()),
+					parseValue(mdef.valueClazz())
+				);	
+			}
+			break;
+			case BEAN:{
+				BeanDefinition bdef = (BeanDefinition)def;
+				Property property = bdef.properties().get(k.toString());
+				if(property!=null){
+					property.invokeSetter(o, parseValue(property.clazz()));
+				}else{
+					tokenizer.getObjectString();
+				}
+			}
+			break;
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <T> T parseObject(Class<T> cls) throws JsonParseError, ReflectionException {
 		if(cls!=null && JsonDecodable.class.isAssignableFrom(cls)){
 			JsonDecodable value = null;
 			try {
@@ -199,16 +346,16 @@ public class JsonDecoder {
 			}
 			return (T)value;
 		}
-		Types.Type type;
+		Definition def;
 		if(cls==null){
-			type = Types.getType(HashMap.class);
+			def = Definitions.get(HashMap.class);
 		}else{
-			type = Types.getType(cls);	
+			def = Definitions.get(cls);	
 		}
 		
 		// create the object internally that we're going to
 		// attempt to parse from the tokenizer
-		T o = type.newInstance();
+		T o = def.newInstance();
 		
 		// store the string part of an object member so
 		// that we can assign it a value in the object
@@ -289,12 +436,8 @@ public class JsonDecoder {
 		}
 	}
 	
-	/**
-	 * Attempt to parse a value
-	 * @throws JsonParseError 
-	 */
 	@SuppressWarnings("unchecked")
-	private <T> T parseValue(Class<T> type) throws JsonParseError {
+	private <T> T parseValue(Class<T> type) throws JsonParseError, ReflectionException {
 		
 		checkValidToken();
 		switch ( token.type ){
@@ -325,5 +468,6 @@ public class JsonDecoder {
 		}
 		return null;
 	}
+	*/
 }
 

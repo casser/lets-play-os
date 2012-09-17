@@ -4,7 +4,7 @@
 
 	<groupId>lets-play</groupId>
 	<artifactId>lp-os-json</artifactId>
-	<version>0.0.1</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>lp-os-json</name>
@@ -35,7 +35,7 @@
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-utils</artifactId>
-			<version>0.0.1</version>
+			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 	<scm>

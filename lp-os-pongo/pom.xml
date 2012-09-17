@@ -4,7 +4,7 @@
 
 	<groupId>lets-play</groupId>
 	<artifactId>lp-os-pongo</artifactId>
-	<version>0.0.1</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>lp-os-pongo</name>
@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-mongo</artifactId>
-			<version>0.0.1</version>
+			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 	<scm>

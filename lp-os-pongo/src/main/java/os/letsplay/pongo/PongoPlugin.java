@@ -1,6 +1,6 @@
 package os.letsplay.pongo;
 
-import os.letsplay.utils.Types;
+import os.letsplay.utils.reflection.Definitions;
 import play.Application;
 import play.Plugin;
 public class PongoPlugin extends Plugin {
@@ -12,8 +12,8 @@ public class PongoPlugin extends Plugin {
     @Override
     public void onStart() {
     	System.out.println("Reloading Types");
-    	System.out.println(Types.classMap.keySet());
-    	Types.classMap.clear();
+    	System.out.println(Definitions.list());
+    	Definitions.clean();
     	Pongo.restart();
     }
 

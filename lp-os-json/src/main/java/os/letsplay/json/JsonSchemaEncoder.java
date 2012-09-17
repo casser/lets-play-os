@@ -32,7 +32,8 @@
 
 package os.letsplay.json;
 
-import os.letsplay.utils.Types;
+import os.letsplay.utils.reflection.Definitions;
+import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 public class JsonSchemaEncoder
 {
@@ -46,7 +47,7 @@ public class JsonSchemaEncoder
 		this(false);
 	}
 
-	public String encode(Class<?> value) {
-		return JSON.encode(Types.getType(value),formated);
+	public String encode(Class<?> value) throws ReflectionException, JsonParseError {
+		return JSON.encode(Definitions.get(value),formated);
 	}
 }

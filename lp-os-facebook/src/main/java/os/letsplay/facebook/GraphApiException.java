@@ -3,11 +3,11 @@ package os.letsplay.facebook;
 import java.util.HashMap;
 
 import os.letsplay.json.JSON;
-import os.letsplay.json.JsonDecodable;
 import os.letsplay.json.JsonParseError;
 
 
-public class GraphApiException extends Exception implements JsonDecodable {
+public class GraphApiException extends Exception {
+	
 	private static final long serialVersionUID = -2977436248098608076L;
 	
 	private String 	message;
@@ -44,22 +44,29 @@ public class GraphApiException extends Exception implements JsonDecodable {
 		super(message);
 	}
 
-	public void decodeJson(String json) {
+	@SuppressWarnings("unchecked")
+	public GraphApiException json(String json) {
 		try {
 			HashMap<String,Object> obj  = JSON.decode(json,HashMap.class);
 			if(obj.containsKey("error")){
-				HashMap<String,String> err  = (HashMap<String,String>)obj.get("error");
-				message = err.get("message");
-				type 	= err.get("type");
-				try{
-					code 	= Integer.parseInt(err.get("code"));
-					subCode	= Integer.parseInt(err.get("error_subcode"));
-				}catch (Exception e) {
+				HashMap<String,Object> err  = (HashMap<String,Object>)obj.get("error");
+				if(err.containsKey("message")){
+					message = (String)err.get("message");
+				}
+				if(err.containsKey("type")){
+					type 	= (String)err.get("type");
+				}
+				if(err.containsKey("code")){
+					code 	= (Integer)err.get("code");	
+				}
+				if(err.containsKey("error_subcode")){
+					subCode	= (Integer)err.get("error_subcode");	
 				}
 			}
 		} catch (JsonParseError e) {
 			e.printStackTrace();
 		}
+		return this;
 	}
 
 }

@@ -131,14 +131,22 @@ public class BytesUtil {
 	public static void printHexString(byte[] bytes) {
 		System.out.println(getHexString(bytes));
 	}
-	
 	public static String getHexString(byte[] bytes) {
+		return getHexString(bytes,false);
+	}
+	public static String getHexString(byte[] bytes, Boolean ascii) {
 		final StringBuilder buf = new StringBuilder();
 		for(int i=0;i<bytes.length;i++){
-			 String s = Integer.toHexString(0xff & bytes[i]);
-			 if (s.length() < 2) 
-                 buf.append("0");
-             buf.append(s);
+			 int b = 0xff & bytes[i];
+			 if(ascii && (b>32 && b<127)){
+	             buf.append(" "+((char) b));
+			 }else{
+				 String s = Integer.toHexString(b);
+				 if (s.length() < 2) 
+	                 buf.append("0");
+	             buf.append(s);
+			 }
+			 
              buf.append(' ');
              if((i+1)%16==0 && i!=bytes.length-1){
             	 String index = Integer.toHexString(((i+1)/16)*16);

@@ -5,7 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import os.letsplay.utils.BytesUtil;
-import os.letsplay.utils.Types.Simple;
+import os.letsplay.utils.reflection.Simple;
 
 
 public class MD5 extends Binary implements Simple {

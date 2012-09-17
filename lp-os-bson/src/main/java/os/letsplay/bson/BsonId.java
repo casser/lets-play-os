@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import os.letsplay.bson.annotations.BsonDocument;
 import os.letsplay.utils.ByteArray;
 import os.letsplay.utils.MD5;
-import os.letsplay.utils.Types.Simple;
+import os.letsplay.utils.reflection.Simple;
 
 
 public class BsonId implements Simple, Comparable<BsonId> {
@@ -191,6 +191,11 @@ public class BsonId implements Simple, Comparable<BsonId> {
 
 	public Object toSimple() {
 		return toString();
-	}	
+	}
+	
+	public static BsonId valueOf(String string) {
+		return new BsonId();
+	}
+	
 }
 
