@@ -3,6 +3,7 @@ package os.letsplay.utils.reflection;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -215,6 +216,20 @@ public class DefinitionProperty{
 		for(String s:info.scope()){
 			this.scope.add(s.toLowerCase());
 		}
+	}
+	
+	public Class<?> classFor(Object target) {
+		try{
+			if(Modifier.isAbstract( clazz().getModifiers() )){
+				Method m = target.getClass().getMethod("classFor", new Class<?>[]{target.getClass(),String.class});
+				return (Class<?>)m.invoke(clazz(), target, name());
+			}else{
+				return clazz();
+			}
+		}catch(Exception ex){
+			ex.printStackTrace();
+		}
+		return null;
 	}
 	
 	

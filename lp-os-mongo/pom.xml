@@ -4,7 +4,7 @@
 
 	<groupId>lets-play</groupId>
 	<artifactId>lp-os-mongo</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>lp-os-mongo</name>
@@ -35,17 +35,17 @@
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-utils</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-json</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>lets-play</groupId>
 			<artifactId>lp-os-bson</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.1</version>
 		</dependency>
 	</dependencies>
 	<scm>

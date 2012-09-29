@@ -188,11 +188,7 @@ public class BsonId implements Simple, Comparable<BsonId> {
     }
     
     private static AtomicInteger _nextInc = new AtomicInteger( (new java.util.Random()).nextInt() );
-
-	public Object toSimple() {
-		return toString();
-	}
-	
+    
 	public static BsonId valueOf(String string) {
 		return new BsonId();
 	}

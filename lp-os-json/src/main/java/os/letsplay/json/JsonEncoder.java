@@ -45,6 +45,7 @@ import os.letsplay.utils.StringUtils;
 import os.letsplay.utils.reflection.Definition;
 import os.letsplay.utils.reflection.DefinitionProperty;
 import os.letsplay.utils.reflection.Definitions;
+import os.letsplay.utils.reflection.Simple;
 import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 
@@ -250,6 +251,9 @@ public class JsonEncoder
 		Definition def = Definitions.get(o.getClass());	
 		switch(def.type()){
 			case SIMPLE:{
+				if(Simple.class.isAssignableFrom(def.clazz())){
+					return "\""+((Simple)o).toString()+"\"";
+				}
 				return "\""+o.toString()+"\"";
 			}
 			case MAP:{
@@ -258,7 +262,7 @@ public class JsonEncoder
 					if(entry.getValue()!=null){
 						String vs = convertToString( entry.getValue(), depth+1);
 						if(vs!=null && vs.length()>0){
-							s += d1+escapeString( entry.getKey().toString() ) + ":" +vs+","+el;
+							s += d1+escapeString( entry.getKey().toString() )+comment(entry.getKey().getClass().getSimpleName()) + ":" +vs+","+el;
 						}
 					}
 				}

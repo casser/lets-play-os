@@ -6,13 +6,25 @@ public class JsonTokenizer {
 	
 	
 	private String jsonString;
+	
+	
 	private int loc;
 	private int line;
+	
 	private int pos;
 	private int level;
 	private char ch;
 	
 	private JsonToken token = null;
+	
+	
+
+	private int 		markedLoc;
+	private int			markedLine;
+	private int 		markedPos;
+	private int 		markedLevel;
+	private char		markedChar;
+	private JsonToken 	markedToken;
 	
 	/**
 	 * Constructs a new JSONDecoder to parse a JSON string
@@ -28,6 +40,24 @@ public class JsonTokenizer {
 		pos  	= -1;
 		level	= 0;
 		nextChar();
+	}
+	
+	public void mark(){
+		markedLoc 		= loc;
+		markedLine 		= line;
+		markedPos 		= pos;
+		markedLevel 	= level;
+		markedChar 		= ch;
+		markedToken 	= token;
+	}
+	
+	public void reset(){
+		loc		= markedLoc;
+		line	= markedLine;
+		pos  	= markedPos;
+		level  	= markedLevel;
+		ch  	= markedChar;
+		token  	= markedToken;
 	}
 	
 	/**

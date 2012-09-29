@@ -6,12 +6,15 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import os.letsplay.utils.StringUtils;
 import os.letsplay.utils.reflection.Definition;
 import os.letsplay.utils.reflection.Definitions;
 import os.letsplay.utils.reflection.DefinitionProperty;
+import os.letsplay.utils.reflection.annotations.Abstract;
 import os.letsplay.utils.reflection.annotations.Property;
 import os.letsplay.utils.reflection.annotations.Properties;
 
@@ -126,5 +129,28 @@ public class BeanDefinition extends Definition 	{
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	public boolean isAbstract() {
+		return Modifier.isAbstract( clazz().getModifiers() );
+	}
+
+	public List<String> getAbstractionProperties() {
+		String[] properties = new String[]{"type"};
+		if(clazz().isAnnotationPresent(Abstract.class)){
+			Abstract an = clazz().getAnnotation(Abstract.class);
+			properties = an.required();
+		}
+		return Arrays.asList(properties);
+	}
+
+	public Class<?> getAbstractionType(Map<String, Object> map) {
+		try{
+			Method m = clazz().getMethod("classFor", new Class<?>[]{Map.class});
+			return (Class<?>)m.invoke(clazz(), map);
+		}catch(Exception ex){
+			ex.printStackTrace();
+		}
+		return null;
 	}
 }

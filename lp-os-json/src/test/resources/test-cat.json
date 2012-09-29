@@ -1,0 +1,6 @@
+{
+  "type"			: "CAT",
+  "animal"			: {
+  	"name"			: "Cat"
+  }
+}

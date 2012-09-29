@@ -6,12 +6,14 @@ import java.io.IOException;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import os.letsplay.json.models.Animal;
+import os.letsplay.json.models.Master;
 import os.letsplay.json.models.User;
 import os.letsplay.utils.MD5;
 import os.letsplay.utils.reflection.exceptions.ReflectionException;
 
 public class MainTest extends TestCase {
-	private static final Boolean DEBUG = false; 
+	private static final Boolean DEBUG = true; 
 	private static Integer line = 0;
 	private static final String[] HASHES= {
 		"98bfff304808f6452825a009caee373c",
@@ -28,12 +30,20 @@ public class MainTest extends TestCase {
 	private File basicFile;
 	private File complexFile;
 	private File modelUserFile;
+	private File modelDogFile;
+	private File modelCatFile;
+	private File modelParrotFile;
+	private File modelAnimailFile;
 	
 	public MainTest(String testName) {
 		super(testName);
-		basicFile 		= new File("target/test-classes/test-basic.json");
-		complexFile 	= new File("target/test-classes/test-complex.json");
-		modelUserFile 	= new File("target/test-classes/test-model-user.json");
+		basicFile 			= new File("target/test-classes/test-basic.json");
+		complexFile 		= new File("target/test-classes/test-complex.json");
+		modelUserFile 		= new File("target/test-classes/test-model-user.json");
+		modelDogFile 		= new File("target/test-classes/test-dog.json");
+		modelCatFile 		= new File("target/test-classes/test-cat.json");
+		modelParrotFile 	= new File("target/test-classes/test-parrot.json");
+		modelAnimailFile 	= new File("target/test-classes/test-animal.json");
 	}
 
 	public static Test suite() {
@@ -57,6 +67,16 @@ public class MainTest extends TestCase {
 	
 	public void testModel() throws JsonParseError, ReflectionException, IOException {
 		print(JSON.encode(JSON.decode(modelUserFile,User.class), true,true));
+	}
+	
+	public void testAbstractParam() throws JsonParseError, ReflectionException, IOException {
+		print(JSON.encode(JSON.decode(modelDogFile,Master.class), true,true));
+		print(JSON.encode(JSON.decode(modelDogFile,Master.class), true,true));
+		print(JSON.encode(JSON.decode(modelCatFile,Master.class), true,true));
+		print(JSON.encode(JSON.decode(modelParrotFile,Master.class), true,true));
+		print(JSON.encode(JSON.decode("{'type':'DOG','name':'Dog'}",Animal.class), true,true));
+		print(JSON.encode(JSON.decode("{'type':'CAT','name':'Cat'}",Animal.class), true,true));
+		print(JSON.encode(JSON.decode("{'type':'PARROT','name':'Parrot'}",Animal.class), true,true));
 	}
 	
 	private static void print(Object o){

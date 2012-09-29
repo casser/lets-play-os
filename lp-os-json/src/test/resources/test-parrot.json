@@ -1,0 +1,6 @@
+{
+  "type"			: "PARROT",
+  "animal"			: {
+  	"name"			: "Parrot"
+  }
+}

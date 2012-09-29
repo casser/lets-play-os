@@ -1,8 +1,10 @@
 package os.letsplay.json;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import os.letsplay.utils.StringUtils;
 import os.letsplay.utils.reflection.Definition;
 import os.letsplay.utils.reflection.Definitions;
 import os.letsplay.utils.reflection.DefinitionProperty;
@@ -37,11 +39,7 @@ public class JsonDecoder {
 	private static void print(Object o){
 		if(DEBUG)System.out.println(o);
 	}
-	
-	private Object serialize(DefinitionProperty property) throws JsonParseError, ReflectionException{
-		return serialize(property!=null?property.clazz():null);
-	}
-	
+		
 	private Object serialize(Class<?> clazz) throws JsonParseError, ReflectionException{
 		if(clazz==null){
 			clazz = Object.class;
@@ -164,6 +162,48 @@ public class JsonDecoder {
 	@SuppressWarnings("unused")
 	private Object serializeBean(Definition def) throws JsonParseError, ReflectionException{
 		BeanDefinition definition 	= (BeanDefinition) def;
+		if(definition.isAbstract()){
+			HashMap<String, Object> map = new HashMap<String, Object>();
+			List<String> props 	= definition.getAbstractionProperties();
+			tokenizer.mark();
+			Boolean exit = true;
+			do {
+				if(props.size()==0){
+					exit = false;
+				}
+				JsonToken keyToken 		= nextToken();
+				JsonToken colonToken 	= nextToken();
+				JsonToken valueToken 	= nextToken();
+				DefinitionProperty property = definition.properties().get(
+					keyToken.value().toString()
+				);
+				
+				Object value = serialize(property.classFor(map));
+				JsonToken commaToken 	= nextToken();
+				switch(commaToken.type()){
+					case OBJECT_END:
+						exit=false;
+					case COMMA:
+						if(property!=null && value!=null){
+							if(props.contains(property.name())){
+								map.put(property.name(), value);
+							}
+						}
+					break;
+					default:
+						throw new JsonParseError("Unexpected en of object, required ',' or '}' found "+token.toString());
+				}
+			}while (exit);
+			
+			if(props.size()==map.size()){
+				tokenizer.reset();
+				return serialize(definition.getAbstractionType(map));
+			}else{
+				throw new JsonParseError("Required properties for abstract class unavailable <"+StringUtils.join(props.toArray(),',')+">");
+			}
+			
+		}
+		
 		Object target 				= definition.newInstance();
 		Boolean exit = true;
 		do {
@@ -173,7 +213,8 @@ public class JsonDecoder {
 			DefinitionProperty property = definition.properties().get(
 				keyToken.value().toString()
 			);
-			Object value = serialize(property);
+			
+			Object value = serialize(property.classFor(target));
 			JsonToken commaToken 	= nextToken();
 			switch(commaToken.type()){
 				case OBJECT_END:
